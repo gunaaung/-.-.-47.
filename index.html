@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>หลักสูตร ฝอ.ตร. 47</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Sarabun', sans-serif;
+            background-color: #f8fafc;
+        }
+        .seat-card {
+            aspect-ratio: 1 / 1.1;
+            transition: all 0.2s ease-in-out;
+        }
+        .seat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            z-index: 10;
+        }
+        /* แอนิเมชันเรืองแสงสีทอง (ชาย) */
+        .on-duty-glow {
+            animation: pulse-amber 2s infinite;
+            border-color: #f59e0b !important;
+            background-color: #fffbeb !important;
+        }
+        @keyframes pulse-amber {
+            0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.6); }
+            70% { box-shadow: 0 0 0 10px rgba(245, 158, 11, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+        }
+        /* แอนิเมชันเรืองแสงสีชมพู (หญิง) */
+        .on-duty-pink-glow {
+            animation: pulse-pink 2s infinite;
+            border-color: #ec4899 !important;
+            background-color: #fdf2f8 !important;
+        }
+        @keyframes pulse-pink {
+            0% { box-shadow: 0 0 0 0 rgba(236, 72, 153, 0.6); }
+            70% { box-shadow: 0 0 0 10px rgba(236, 72, 153, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(236, 72, 153, 0); }
+        }
+        .modal-enter {
+            animation: modalFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        @keyframes modalFadeIn {
+            from { opacity: 0; transform: scale(0.9) translateY(10px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        .grid-container::-webkit-scrollbar {
+            height: 8px;
+        }
+        .grid-container::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        .grid-container::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+        .classroom-grid {
+            display: grid;
+            grid-template-columns: 60px repeat(12, minmax(80px, 1fr));
+            gap: 0.5rem;
+            min-width: 1150px;
+        }
+        .info-pill {
+            background: #f1f5f9;
+            border-radius: 8px;
+            padding: 8px 12px;
+            border: 1px solid #e2e8f0;
+        }
+        .refresh-spin {
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="pb-20">
+
+    <!-- Header Section -->
+    <header class="bg-blue-950 text-white pt-8 pb-12 shadow-xl sticky top-0 z-40 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]">
+        <div class="container mx-auto px-4 text-center">
+            <!-- อัปเดตชื่อหลักสูตรตามคำขอ -->
+            <h1 class="text-2xl md:text-4xl font-extrabold tracking-tight text-white">หลักสูตร ฝอ.ตร. 47</h1>
+            
+            <div class="mt-3 inline-flex items-center bg-blue-900/50 px-4 py-1.5 rounded-full border border-blue-800 backdrop-blur-sm">
+                <span class="w-2 h-2 bg-green-400 rounded-full mr-2 animate-pulse"></span>
+                <span id="todayDateDisplay" class="text-amber-400 font-bold text-xs md:text-sm tracking-wide">
+                    วันที่ ...
+                </span>
+            </div>
+            
+            <div class="max-w-xl mx-auto mt-6 flex gap-2 px-2">
+                <div class="relative group flex-grow">
+                    <input type="text" id="searchInput" placeholder="ค้นหาด้วย ชื่อ หรือชื่อเล่น..." 
+                        class="w-full px-6 py-3 rounded-full border-none text-gray-800 focus:ring-4 focus:ring-blue-500 shadow-2xl transition-all pl-12 text-lg">
+                    <div class="absolute left-4 top-3.5 text-gray-400 group-focus-within:text-blue-600 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                    </div>
+                </div>
+                <button onclick="refreshData()" id="refreshBtn" title="รีเฟรชข้อมูล" 
+                    class="bg-blue-600 hover:bg-blue-500 text-white p-3 rounded-full shadow-2xl transition-all active:scale-95 flex items-center justify-center">
+                    <svg id="refreshIcon" xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 -mt-6">
+        <div class="bg-white rounded-3xl shadow-2xl p-6 md:p-8">
+            <div class="w-full bg-gradient-to-r from-slate-800 to-slate-700 py-4 mb-12 rounded-xl text-center text-white font-bold tracking-[0.8em] shadow-lg border-b-4 border-blue-500 uppercase text-sm">
+                หน้าชั้นเรียน / วิทยากร
+            </div>
+
+            <div class="grid-container overflow-x-auto pb-6">
+                <div id="seatingGrid" class="classroom-grid">
+                    <div class="col-span-full text-center py-24">
+                        <div class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-blue-900 border-t-transparent"></div>
+                        <p class="mt-4 text-slate-500 font-bold animate-pulse">กำลังโหลดผังที่นั่งและตารางเวร...</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-8 flex flex-wrap justify-center gap-6 text-[10px] md:text-xs text-slate-500 border-t pt-6 uppercase font-bold tracking-wider">
+                <div class="flex items-center"><span class="w-3 h-3 bg-white border border-slate-300 rounded mr-2"></span> ปกติ</div>
+                <div class="flex items-center"><span class="w-3 h-3 bg-amber-400 border border-amber-600 rounded mr-2"></span> เวรประจำวัน (ช)</div>
+                <div class="flex items-center"><span class="w-3 h-3 bg-pink-400 border border-pink-600 rounded mr-2"></span> เวรประจำวัน (ญ)</div>
+                <div class="flex items-center text-blue-900 animate-bounce">* คลิกที่รูปเพื่อดูรายละเอียด</div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Detailed Profile Modal -->
+    <div id="modalOverlay" class="fixed inset-0 bg-slate-900/80 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm transition-all">
+        <div class="bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden modal-enter flex flex-col max-h-[92vh]">
+            
+            <div id="modalHeader" class="bg-gradient-to-br from-blue-900 via-blue-800 to-indigo-900 p-8 relative transition-colors duration-500">
+                <!-- สัญลักษณ์แจ้งเตือนใน Modal -->
+                <div id="modalDutyIndicator" class="absolute top-6 left-6 hidden">
+                    <span id="modalDutyBadge" class="flex items-center text-blue-900 px-3 py-1.5 rounded-full text-[10px] font-black shadow-xl ring-2 ring-white animate-bounce">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                        </svg>
+                        เข้าเวรวันนี้
+                    </span>
+                </div>
+
+                <button onclick="closeModal()" class="absolute top-6 right-6 text-white/50 hover:text-white hover:bg-white/10 p-2 rounded-full transition-all">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+                
+                <div class="flex flex-col items-center">
+                    <div class="relative group">
+                        <div id="modalRing" class="absolute inset-0 bg-blue-400 rounded-3xl blur opacity-20 transition-all duration-500"></div>
+                        <div id="modalProfileImgContainer" class="relative w-36 h-36 md:w-44 md:h-44 rounded-3xl overflow-hidden border-4 border-white shadow-2xl bg-slate-100 flex items-center justify-center">
+                            <img id="modalImg" src="" alt="Police Profile" class="w-full h-full object-cover hidden">
+                            <div id="modalPlaceholderIcon" class="w-full h-full flex items-center justify-center"></div>
+                        </div>
+                        <div id="modalSeatNum" class="absolute -bottom-4 -right-4 bg-yellow-400 text-blue-950 font-black px-4 py-1.5 rounded-2xl shadow-xl border-4 border-white text-sm">
+                            #00
+                        </div>
+                    </div>
+                    <h2 id="modalFullName" class="text-2xl md:text-3xl font-black text-white mt-8 mb-1 text-center tracking-tight">ยศ ชื่อ นามสกุล</h2>
+                    <p id="modalNickname" class="text-blue-200 font-bold italic text-xl text-center">ชื่อเล่น: -</p>
+                </div>
+            </div>
+            
+            <div class="overflow-y-auto p-8 space-y-6 text-gray-800">
+                <!-- Duty Section -->
+                <section id="modalDutyBox" class="hidden">
+                    <div id="modalDutyAlert" class="border-2 p-5 rounded-2xl flex items-center shadow-sm">
+                        <div id="modalDutyIconBg" class="w-12 h-12 rounded-xl flex items-center justify-center mr-4 text-white shadow-lg">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <h4 id="modalDutyTitle" class="font-black text-[10px] uppercase tracking-widest mb-0.5">ปฏิบัติหน้าที่วันนี้</h4>
+                            <p id="modalDutyLabel" class="font-extrabold text-lg">เข้าเวรปฏิบัติหน้าที่</p>
+                        </div>
+                    </div>
+                </section>
+
+                <section>
+                    <h3 class="flex items-center text-blue-900 font-extrabold text-sm uppercase tracking-widest mb-4">
+                        <span class="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center mr-3 text-blue-600">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" />
+                            </svg>
+                        </span>
+                        ข้อมูลส่วนตัวและตำแหน่ง
+                    </h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div class="info-pill">
+                            <label class="text-[10px] uppercase text-slate-400 font-black block mb-0.5">ตำแหน่งปัจจุบัน</label>
+                            <span id="modalPosition" class="text-slate-700 font-bold">-</span>
+                        </div>
+                        <div class="info-pill">
+                            <label class="text-[10px] uppercase text-slate-400 font-black block mb-0.5">เบอร์โทรศัพท์</label>
+                            <span id="modalPhone" class="text-blue-700 font-black">-</span>
+                        </div>
+                        <div class="info-pill md:col-span-2">
+                            <label class="text-[10px] uppercase text-slate-400 font-black block mb-0.5">สถานะ</label>
+                            <span id="modalStatus" class="text-blue-800 font-bold">-</span>
+                        </div>
+                    </div>
+                </section>
+
+                <section>
+                    <h3 class="flex items-center text-blue-900 font-extrabold text-sm uppercase tracking-widest mb-4">
+                        <span class="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center mr-3 text-blue-600">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                            </svg>
+                        </span>
+                        อยากจะบอกอะไรกับเพื่อนๆ
+                    </h3>
+                    <div class="bg-blue-50 p-5 rounded-2xl border border-blue-100 text-blue-900 leading-relaxed font-medium relative">
+                        <p id="modalMessage" class="whitespace-pre-line text-sm md:text-base italic">"-"</p>
+                    </div>
+                </section>
+
+                <section>
+                    <h3 class="flex items-center text-blue-900 font-extrabold text-sm uppercase tracking-widest mb-4">
+                        <span class="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center mr-3 text-green-600">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd" />
+                            </svg>
+                        </span>
+                        ข้อมูลส่วนตัว / งานอดิเรก
+                    </h3>
+                    <div class="bg-green-50/50 p-5 rounded-2xl border border-green-100 text-slate-700 leading-relaxed italic text-sm md:text-base">
+                        <p id="modalHobbies" class="whitespace-pre-line font-medium">-</p>
+                    </div>
+                </section>
+
+                <section>
+                    <h3 class="flex items-center text-blue-900 font-extrabold text-sm uppercase tracking-widest mb-4">
+                        <span class="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center mr-3 text-indigo-600">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path d="M10.394 2.827a1 1 0 00-.788 0l-7 3a1 1 0 000 1.846l7 3a1 1 0 00.788 0l7-3a1 1 0 000-1.846l-7-3z" />
+                                <path d="M3 10.746v3.347a1 1 0 00.458.832l4 2.5a1 1 0 001.084 0l4-2.5a1 1 0 00.458-.832v-3.347l-4.516 1.936a1 1 0 01-.788 0L3 10.746z" />
+                            </svg>
+                        </span>
+                        วุฒิการศึกษา
+                    </h3>
+                    <div class="bg-indigo-50/50 p-5 rounded-2xl border border-indigo-100 text-slate-700 leading-relaxed italic text-sm md:text-base">
+                        <p id="modalEdu" class="whitespace-pre-line font-medium">-</p>
+                    </div>
+                </section>
+
+                <button onclick="closeModal()" class="w-full bg-blue-950 text-white py-4 rounded-2xl font-black text-lg hover:bg-blue-900 transition-all shadow-xl active:scale-[0.98] mt-4">
+                    กลับหน้าผังที่นั่ง
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRCJUfNHvOshKc8afyHvk_aJubIjzr5Z1kysOYilI2FQmqu2zMn2kkah3y53X9BgnE0voLwuwplHbB3/pub?output=csv';
+        let studentData = [];
+        const SEATS_PER_ROW = 12;
+
+        const MALE_ICON = `<svg xmlns="http://www.w3.org/2000/svg" class="w-3/4 h-3/4 text-slate-400" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>`;
+        const FEMALE_ICON = `<svg xmlns="http://www.w3.org/2000/svg" class="w-3/4 h-3/4 text-pink-400" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/><path d="M12 12c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" opacity=".3"/></svg>`;
+
+        function getVal(row, headerName) {
+            if (!row || !headerName) return null;
+            const keys = Object.keys(row);
+            const targetKey = keys.find(k => k.trim() === headerName.trim());
+            return targetKey ? row[targetKey] : null;
+        }
+
+        function getDutyDateString() {
+            const now = new Date();
+            const d = now.getDate();
+            const m = now.getMonth() + 1;
+            const y = now.getFullYear();
+            return `${d}/${m}/${y}`;
+        }
+
+        function checkDuty(student) {
+            const todayStr = getDutyDateString();
+            const dutyContent = getVal(student, "เวรทั่วไป/เวรต้อนรับ");
+            if (!dutyContent) return null;
+            const contentStr = dutyContent.toString().trim();
+            const variations = [
+                todayStr,
+                `${new Date().getDate().toString().padStart(2, '0')}/${(new Date().getMonth() + 1).toString().padStart(2, '0')}/${new Date().getFullYear()}`
+            ];
+            for (const v of variations) {
+                if (contentStr.includes(v)) return true;
+            }
+            return null;
+        }
+
+        function formatDriveLink(url) {
+            if (!url || typeof url !== 'string') return "";
+            if (url.includes("drive.google.com")) {
+                let fileId = "";
+                if (url.includes("id=")) {
+                    fileId = url.split("id=")[1].split("&")[0];
+                } else if (url.includes("/d/")) {
+                    fileId = url.split("/d/")[1].split("/")[0];
+                }
+                if (fileId) return `https://lh3.googleusercontent.com/d/${fileId}`;
+            }
+            return url;
+        }
+
+        function getImageUrl(student) {
+            const imgLink = getVal(student, 'รูปภาพประกอบ') || getVal(student, 'รูปภาพ') || student['Link'];
+            return formatDriveLink(imgLink);
+        }
+
+        function formatPhoneNumber(phone) {
+            if (!phone || phone === '-') return '-';
+            let pStr = phone.toString().trim();
+            if (pStr === "") return '-';
+            if (!pStr.startsWith('0')) pStr = '0' + pStr;
+            return pStr;
+        }
+
+        function initApp() {
+            const now = new Date();
+            const dateStr = `${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear()}`;
+            document.getElementById('todayDateDisplay').innerText = `วันที่ ${dateStr}`;
+            
+            const grid = document.getElementById('seatingGrid');
+            grid.innerHTML = `<div class="col-span-full text-center py-24"><div class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-blue-900 border-t-transparent"></div><p class="mt-4 text-slate-500 font-bold animate-pulse">กำลังโหลดข้อมูลผังที่นั่ง...</p></div>`;
+
+            Papa.parse(CSV_URL, {
+                download: true,
+                header: true,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    studentData = results.data.filter(row => {
+                        const name = getVal(row, 'ชื่อ');
+                        return name && name.trim() !== "";
+                    });
+                    renderGrid(studentData);
+                    stopRefreshAnimation();
+                },
+                error: function(err) {
+                    grid.innerHTML = `<div class="col-span-full py-10 text-center text-red-600 font-bold">❌ ไม่สามารถดึงข้อมูลได้</div>`;
+                    stopRefreshAnimation();
+                }
+            });
+        }
+
+        function refreshData() {
+            const btn = document.getElementById('refreshBtn');
+            const icon = document.getElementById('refreshIcon');
+            if(icon) icon.classList.add('refresh-spin');
+            if(btn) btn.disabled = true;
+            initApp();
+        }
+
+        function stopRefreshAnimation() {
+            const btn = document.getElementById('refreshBtn');
+            const icon = document.getElementById('refreshIcon');
+            if(icon) icon.classList.remove('refresh-spin');
+            if(btn) btn.disabled = false;
+        }
+
+        function renderGrid(data, filter = '') {
+            const grid = document.getElementById('seatingGrid');
+            grid.innerHTML = '';
+            const totalRows = Math.ceil(data.length / SEATS_PER_ROW);
+
+            for (let r = 0; r < totalRows; r++) {
+                const rowLabel = document.createElement('div');
+                rowLabel.className = "flex items-center justify-center font-black text-blue-900 bg-blue-50 rounded-lg text-[10px] md:text-xs shadow-inner border border-blue-200";
+                rowLabel.innerHTML = `แถว<br>${r + 1}`;
+                grid.appendChild(rowLabel);
+
+                for (let c = 0; c < SEATS_PER_ROW; c++) {
+                    const studentIdx = (r * SEATS_PER_ROW) + c;
+                    const student = data[studentIdx];
+
+                    if (student) {
+                        const firstName = (getVal(student, 'ชื่อ') || "").trim();
+                        const nickname = (getVal(student, 'ชื่อเล่น') || "").trim();
+                        const callingName = nickname ? `คุณ${nickname}` : `คุณ${firstName}`;
+                        
+                        const rank = getVal(student, 'ยศ') || "";
+                        const isFemale = rank.includes("หญิง");
+                        const hasDuty = checkDuty(student);
+
+                        const isMatch = filter === '' || JSON.stringify(student).toLowerCase().includes(filter.toLowerCase());
+                        
+                        let dutyClass = 'border-slate-100';
+                        let badgeColor = 'bg-amber-500';
+                        let nameTextColor = 'text-blue-900';
+
+                        if (hasDuty) {
+                            if (isFemale) {
+                                dutyClass = 'on-duty-pink-glow';
+                                badgeColor = 'bg-pink-500';
+                                nameTextColor = 'text-pink-800';
+                            } else {
+                                dutyClass = 'on-duty-glow';
+                                badgeColor = 'bg-amber-500';
+                                nameTextColor = 'text-amber-800';
+                            }
+                        }
+
+                        const seatDiv = document.createElement('div');
+                        seatDiv.className = `seat-card relative bg-white rounded-xl shadow-sm flex flex-col items-center justify-center p-1.5 cursor-pointer border-2 transition-all
+                            ${dutyClass}
+                            ${isMatch ? 'hover:border-blue-500 hover:shadow-lg' : 'opacity-10 grayscale scale-90 pointer-events-none'}`;
+                        
+                        const seatNumber = studentIdx + 1;
+                        const profileImg = getImageUrl(student);
+
+                        seatDiv.innerHTML = `
+                            <span class="absolute top-1 left-1.5 text-[8px] text-slate-400 font-black italic">#${seatNumber}</span>
+                            ${hasDuty ? `
+                                <div class="absolute -top-2 -right-1 z-20 ${badgeColor} text-white rounded-full p-1.5 shadow-lg border-2 border-white animate-bounce">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                                    </svg>
+                                </div>
+                            ` : ''}
+                            <div class="w-10 h-10 md:w-14 md:h-14 rounded-xl overflow-hidden border border-slate-100 mb-1.5 bg-slate-50 flex items-center justify-center">
+                                ${profileImg ? `<img src="${profileImg}" class="w-full h-full object-cover">` : (isFemale ? FEMALE_ICON : MALE_ICON)}
+                            </div>
+                            <div class="text-[8px] md:text-[10px] font-bold ${nameTextColor} text-center truncate w-full">${callingName}</div>
+                        `;
+
+                        if (isMatch) seatDiv.onclick = () => showModal(student, seatNumber, hasDuty, isFemale);
+                        grid.appendChild(seatDiv);
+                    } else {
+                        const empty = document.createElement('div');
+                        empty.className = "seat-card bg-slate-50/50 rounded-xl border border-dashed border-slate-200 flex items-center justify-center";
+                        empty.innerHTML = `<span class="text-[10px] text-slate-300 font-bold uppercase">ว่าง</span>`;
+                        grid.appendChild(empty);
+                    }
+                }
+            }
+        }
+
+        function showModal(student, seatNum, hasDuty, isFemale) {
+            const rank = getVal(student, 'ยศ') || "";
+            const firstName = (getVal(student, 'ชื่อ') || "").trim();
+            const lastName = (getVal(student, 'นามสกุล') || "").trim();
+            const nickname = (getVal(student, 'ชื่อเล่น') || "").trim();
+
+            const rawPhone = getVal(student, 'เบอร์โทร') || getVal(student, 'เบอร์โทรศัพท์') || '-';
+            const phone = formatPhoneNumber(rawPhone);
+
+            const hobbies = getVal(student, 'ข้อมูลส่วนตัว/งานอดิเรก') || getVal(student, 'งานอดิเรก') || '-';
+            const status = getVal(student, 'สถานะ') || '-';
+            const message = getVal(student, 'อยากจะบอกอะไรกับเพื่อนๆ') || '-';
+            const edu = getVal(student, 'การศึกษา') || getVal(student, 'วุฒิการศึกษา') || '-';
+            const pos = getVal(student, 'ตำแหน่ง') || '-';
+
+            document.getElementById('modalFullName').innerText = `${rank}${firstName} ${lastName}`;
+            document.getElementById('modalNickname').innerText = nickname ? `ชื่อเล่น: ${nickname}` : 'ชื่อเล่น: -';
+            document.getElementById('modalPosition').innerText = pos;
+            document.getElementById('modalPhone').innerText = phone;
+            document.getElementById('modalStatus').innerText = status;
+            document.getElementById('modalHobbies').innerText = hobbies;
+            document.getElementById('modalMessage').innerText = (message !== '-' && message.trim() !== "") ? message : '-';
+            document.getElementById('modalEdu').innerText = edu;
+            document.getElementById('modalSeatNum').innerText = `ที่นั่ง #${seatNum}`;
+            
+            const dutyIndicator = document.getElementById('modalDutyIndicator');
+            const dutyBadge = document.getElementById('modalDutyBadge');
+            const dutyBox = document.getElementById('modalDutyBox');
+            const dutyAlert = document.getElementById('modalDutyAlert');
+            const dutyIconBg = document.getElementById('modalDutyIconBg');
+            const dutyTitle = document.getElementById('modalDutyTitle');
+            const header = document.getElementById('modalHeader');
+            const ring = document.getElementById('modalRing');
+            const modalImg = document.getElementById('modalImg');
+            const placeholderIcon = document.getElementById('modalPlaceholderIcon');
+
+            const profileImg = getImageUrl(student);
+            if(profileImg) {
+                modalImg.src = profileImg;
+                modalImg.classList.remove('hidden');
+                placeholderIcon.innerHTML = '';
+            } else {
+                modalImg.classList.add('hidden');
+                placeholderIcon.innerHTML = isFemale ? FEMALE_ICON : MALE_ICON;
+            }
+
+            if (hasDuty) {
+                dutyIndicator.classList.remove('hidden');
+                dutyBox.classList.remove('hidden');
+                if (isFemale) {
+                    header.className = "bg-gradient-to-br from-pink-800 via-pink-700 to-rose-900 p-8 relative transition-colors duration-500";
+                    dutyBadge.className = "flex items-center bg-pink-400 text-white px-3 py-1.5 rounded-full text-[10px] font-black shadow-xl ring-2 ring-white animate-bounce";
+                    dutyAlert.className = "border-2 border-pink-200 bg-pink-50 p-5 rounded-2xl flex items-center shadow-sm on-duty-pink-glow";
+                    dutyIconBg.className = "w-12 h-12 bg-pink-500 rounded-xl flex items-center justify-center mr-4 text-white shadow-lg";
+                    dutyTitle.className = "text-pink-900 font-black text-[10px] uppercase tracking-widest mb-0.5";
+                    ring.className = "absolute inset-0 bg-pink-400 rounded-3xl blur opacity-40 animate-pulse";
+                } else {
+                    header.className = "bg-gradient-to-br from-amber-800 via-amber-700 to-orange-900 p-8 relative transition-colors duration-500";
+                    dutyBadge.className = "flex items-center bg-amber-400 text-blue-900 px-3 py-1.5 rounded-full text-[10px] font-black shadow-xl ring-2 ring-white animate-bounce";
+                    dutyAlert.className = "border-2 border-amber-200 bg-amber-50 p-5 rounded-2xl flex items-center shadow-sm on-duty-glow";
+                    dutyIconBg.className = "w-12 h-12 bg-amber-500 rounded-xl flex items-center justify-center mr-4 text-white shadow-lg";
+                    dutyTitle.className = "text-amber-900 font-black text-[10px] uppercase tracking-widest mb-0.5";
+                    ring.className = "absolute inset-0 bg-amber-400 rounded-3xl blur opacity-40 animate-pulse";
+                }
+            } else {
+                header.className = "bg-gradient-to-br from-blue-900 via-blue-800 to-indigo-900 p-8 relative transition-colors duration-500";
+                dutyIndicator.classList.add('hidden');
+                dutyBox.classList.add('hidden');
+                ring.className = "absolute inset-0 bg-blue-400 rounded-3xl blur opacity-20";
+            }
+
+            document.getElementById('modalOverlay').classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeModal() {
+            document.getElementById('modalOverlay').classList.add('hidden');
+            document.body.style.overflow = 'auto';
+        }
+
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            renderGrid(studentData, e.target.value);
+        });
+
+        window.onclick = function(e) { if (e.target.id === 'modalOverlay') closeModal(); }
+        window.onload = initApp;
+    </script>
+</body>
+</html>
